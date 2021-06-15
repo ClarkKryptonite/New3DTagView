@@ -46,10 +46,8 @@ class TagView @JvmOverloads constructor(
         // 设置TagView位置
         initTagViewPosition()
         // 随机设置旋转方向
-        // directionPoint.x = ((0 until 10).random() - 5).toDouble()
-        // directionPoint.y = ((0 until 10).random() - 5).toDouble()
-        directionPoint.x = 1.0
-        directionPoint.y = 0.0
+        directionPoint.x = ((0 until 10).random() - 5).toDouble()
+        directionPoint.y = ((0 until 10).random() - 5).toDouble()
     }
 
     private fun initScreenInfo() {
@@ -100,12 +98,17 @@ class TagView @JvmOverloads constructor(
         val widthMode = MeasureSpec.getMode(widthMeasureSpec)
         val heightMode = MeasureSpec.getMode(heightMeasureSpec)
 
-        val dimensionX =
+        var dimensionX =
             if (widthMode == MeasureSpec.EXACTLY) contentWidth
             else outSizePoint.x - marginLeft - marginRight
-        val dimensionY =
+        var dimensionY =
             if (heightMode == MeasureSpec.EXACTLY) contentHeight
             else outSizePoint.y - marginTop - marginBottom
+        if (dimensionX < dimensionY) {
+            dimensionY = dimensionX
+        } else {
+            dimensionX = dimensionY
+        }
         setMeasuredDimension(dimensionX, dimensionY)
         measureChildren(MeasureSpec.UNSPECIFIED, MeasureSpec.UNSPECIFIED)
     }
@@ -119,17 +122,14 @@ class TagView @JvmOverloads constructor(
     private fun updatePointByIndex(index: Int) {
         val newPoint = tagPositionList[index].pointRotation(directionPoint, angle)
         tagPositionList[index] = newPoint
-        if (index == 20) {
-            println("tag position: x:${tagPositionList[index].x} y:${tagPositionList[index].y}")
-        }
         setTagPointByIndex(index)
     }
 
     private fun setTagPointByIndex(index: Int) {
         val view = tagViewList[index]
         val point = tagPositionList[index]
-        val x = ((point.x + 1) * outSizePoint.x / 2 - view.width / 2).roundToInt()
-        val y = ((point.y + 1) * outSizePoint.x / 2 - view.height / 2).roundToInt()
+        val x = ((point.x + 1) * width / 2 - view.width / 2).roundToInt()
+        val y = ((point.y + 1) * height / 2 - view.height / 2).roundToInt()
         val transform = ((point.z + 2) / 3).toFloat()
         view.scaleX = transform
         view.scaleY = transform

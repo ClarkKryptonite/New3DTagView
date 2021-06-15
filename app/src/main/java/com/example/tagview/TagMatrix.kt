@@ -58,7 +58,7 @@ fun TagPoint.pointRotation(direction: TagPoint, angle: Double): TagPoint {
     }
 
     val distanceXYZ =
-        direction.x * direction.x + direction.y * direction.y + direction.y * direction.y
+        direction.x * direction.x + direction.y * direction.y + direction.z * direction.z
     if (distanceXYZ != 0.0) {
         val cos2 = sqrt(distanceYZ) / sqrt(distanceXYZ)
         val sin2 = -direction.x / sqrt(distanceXYZ)
