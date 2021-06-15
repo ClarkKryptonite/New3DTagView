@@ -21,7 +21,7 @@ import kotlin.math.sqrt
  * @author kun
  * @since 2021-06-14
  **/
-class TagView @JvmOverloads constructor(
+class TagCloudView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
@@ -57,7 +57,9 @@ class TagView @JvmOverloads constructor(
     }
 
     private fun initScreenInfo() {
-        (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)?.defaultDisplay?.getSize(outSizePoint)
+        (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)?.defaultDisplay?.getSize(
+            outSizePoint
+        )
     }
 
     private fun initTagView() {
@@ -108,29 +110,46 @@ class TagView @JvmOverloads constructor(
     }
 
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
-        tagViewList.forEachIndexed { i, _ ->
-            setTagPointByIndex(i, adapter.getLocationByIndex(i))
+        tagViewList.forEachIndexed { i, v ->
+            setTagViewAttribute(v, adapter.getLocationByIndex(i)) { x, y ->
+                v.layout(
+                    x.roundToInt(),
+                    y.roundToInt(),
+                    (x + v.measuredWidth).roundToInt(),
+                    (y + v.measuredHeight).roundToInt()
+                )
+            }
         }
     }
 
-    private fun setTagPointByIndex(index: Int, point: TagPoint) {
-        val view = tagViewList[index]
-        val x = ((point.x + 1) * width / 2 - view.width / 2).roundToInt()
-        val y = ((point.y + 1) * height / 2 - view.height / 2).roundToInt()
+    private fun setTagPointByIndex(view: View, point: TagPoint) {
+        setTagViewAttribute(view, point) { x, y ->
+            view.x = x.toFloat()
+            view.y = y.toFloat()
+        }
+    }
+
+    private fun setTagViewAttribute(
+        view: View,
+        point: TagPoint,
+        setTagPosition: (x: Double, y: Double) -> Unit
+    ) {
+        val x = (point.x + 1) * width / 2 - view.width / 2
+        val y = (point.y + 1) * height / 2 - view.height / 2
         val transform = ((point.z + 2) / 3).toFloat()
         view.scaleX = transform
         view.scaleY = transform
         view.z = transform
         view.alpha = transform
         view.isClickable = point.z > 0
-        view.layout(x, y, x + view.measuredWidth, y + view.measuredHeight)
+        setTagPosition(x, y)
     }
 
     override fun run() {
         if (!animateFlag) return
-        tagViewList.forEachIndexed { index, _ ->
+        tagViewList.forEachIndexed { index, view ->
             adapter.updatePointLocationByIndex(index, directionPoint, angle) { point ->
-                setTagPointByIndex(index, point)
+                setTagPointByIndex(view, point)
             }
         }
         postDelayed(this, 50)
