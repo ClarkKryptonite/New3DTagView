@@ -3,15 +3,15 @@ package com.example.tagview
 import android.content.Context
 import android.graphics.Point
 import android.util.AttributeSet
-import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
-import android.widget.TextView
 import androidx.core.view.marginBottom
 import androidx.core.view.marginLeft
 import androidx.core.view.marginRight
 import androidx.core.view.marginTop
+import com.example.tagview.adapter.EmptyTagAdapter
+import com.example.tagview.adapter.TagAdapter
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -32,62 +32,56 @@ class TagView @JvmOverloads constructor(
     private var directionPoint = TagPoint()
     private var angle = 0.002
 
-    private val tagList = arrayListOf<String>()
-    private val tagViewList = arrayListOf<View>()
-    private val tagPositionList = arrayListOf<TagPoint>()
-
     private var animateFlag = false
+
+    private val tagViewList = arrayListOf<View>()
+
+    var adapter: TagAdapter<*, *> = EmptyTagAdapter()
+        set(value) {
+            if (field != value) {
+                field = value
+                initTagView()
+                initTagViewPosition()
+                requestLayout()
+            }
+        }
 
     init {
         // 获取屏幕宽高
         initScreenInfo()
-        // 初始化TagView
-        initTagView()
-        // 设置TagView位置
-        initTagViewPosition()
+        // 设置属性
+        isClickable = true
         // 随机设置旋转方向
         directionPoint.x = ((0 until 10).random() - 5).toDouble()
         directionPoint.y = ((0 until 10).random() - 5).toDouble()
     }
 
     private fun initScreenInfo() {
-        (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)?.let { wm ->
-            wm.defaultDisplay.getSize(outSizePoint)
-        }
+        (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)?.defaultDisplay?.getSize(outSizePoint)
     }
 
     private fun initTagView() {
-        for (i in 0 until 50) {
-            tagList.add("TAG-$i")
-        }
-        tagList.forEach {
-            val view = TextView(context)
-            view.paint.isFakeBoldText = true
-            view.includeFontPadding = false
-            view.setLineSpacing(0f, 0f)
-            view.text = it
-            view.gravity = Gravity.CENTER
-            view.textSize = 12f
+        removeAllViewsInLayout()
+        for (i in 0 until adapter.getCount()) {
+            val view = adapter.createView(this, i)
             tagViewList.add(view)
             addView(view)
         }
     }
 
     private fun initTagViewPosition() {
-        tagPositionList.clear()
-
+        if (adapter.getCount() == 0) return
         val p1 = Math.PI * (3 - sqrt(5.0))
-        val p2 = 2.0 / tagList.count()
+        val p2 = 2.0 / adapter.getCount()
 
-        tagList.forEachIndexed { i, _ ->
+        tagViewList.forEachIndexed { i, _ ->
             val y = i * p2 - 1 + (p2 / 2)
             val r = sqrt(1 - y * y)
             val p3 = i * p1
             val x = cos(p3) * r
             val z = sin(p3) * r
 
-            val point = TagPoint(x, y, z)
-            tagPositionList.add(point)
+            adapter.bindPosition(i, x, y, z)
         }
     }
 
@@ -115,19 +109,12 @@ class TagView @JvmOverloads constructor(
 
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
         tagViewList.forEachIndexed { i, _ ->
-            setTagPointByIndex(i)
+            setTagPointByIndex(i, adapter.getLocationByIndex(i))
         }
     }
 
-    private fun updatePointByIndex(index: Int) {
-        val newPoint = tagPositionList[index].pointRotation(directionPoint, angle)
-        tagPositionList[index] = newPoint
-        setTagPointByIndex(index)
-    }
-
-    private fun setTagPointByIndex(index: Int) {
+    private fun setTagPointByIndex(index: Int, point: TagPoint) {
         val view = tagViewList[index]
-        val point = tagPositionList[index]
         val x = ((point.x + 1) * width / 2 - view.width / 2).roundToInt()
         val y = ((point.y + 1) * height / 2 - view.height / 2).roundToInt()
         val transform = ((point.z + 2) / 3).toFloat()
@@ -142,7 +129,9 @@ class TagView @JvmOverloads constructor(
     override fun run() {
         if (!animateFlag) return
         tagViewList.forEachIndexed { index, _ ->
-            updatePointByIndex(index)
+            adapter.updatePointLocationByIndex(index, directionPoint, angle) { point ->
+                setTagPointByIndex(index, point)
+            }
         }
         postDelayed(this, 50)
     }
@@ -150,6 +139,11 @@ class TagView @JvmOverloads constructor(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         start()
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        stop()
     }
 
     fun start() {
